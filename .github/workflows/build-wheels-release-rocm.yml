@@ -95,24 +95,3 @@ jobs:
           file_glob: true
           overwrite: true
           release_name: ${{ steps.build-wheel.outputs.PACKAGE_VERSION }}
-      
-  # publish-to-pypi:
-  #   name: Publish Python distribution to PyPI
-  #   if: inputs.pypi == '1' && github.event_name != 'workflow_call'
-  #   needs: ['build_wheels']
-  #   runs-on: ubuntu-latest
-  #   
-  #   environment:
-  #     name: pypi
-  #     url: https://pypi.org/p/exllamav2
-  #   permissions:
-  #     id-token: write  # IMPORTANT: mandatory for trusted publishing
-  #     
-  #   steps:
-  #     - name: Download all the wheels
-  #       uses: actions/download-artifact@v3
-  #       with:
-  #         name: wheels
-  #         path: dist/
-  #     - name: Publish distribution to PyPI
-  #       uses: pypa/gh-action-pypi-publish@v1.8.10
