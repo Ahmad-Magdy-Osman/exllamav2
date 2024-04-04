@@ -22,6 +22,7 @@ class ExLlamaV2Module:
     device_idx: int
     footprint: int
     submodules: list[ExLlamaV2Module]
+    assumed_footprint: int
 
     def __init__(self,
                  model: ExLlamaV2,
@@ -77,7 +78,7 @@ class ExLlamaV2Module:
             submap_i[v].append(k)
 
         for v, ks in submap_i.items():
-            stfile = STFile.open(v, fast = self.model.config.fasttensors)
+            stfile = STFile.open(v, fast = self.model.config.fasttensors, keymap = self.model.config.arch.keymap)
             for k in ks:
                 if measure:
                     size += stfile.measure(key + "." + k)
@@ -133,6 +134,32 @@ class ExLlamaV2Module:
         return None
 
 
+    def load_weight_fused(self,
+                          f_key: str,
+                          f_beg: int,
+                          f_end: int,
+                          in_feat: int,
+                          out_feat: int):
+
+        for key in [f_key, f_key + ".weight"]:
+
+            filename = self.model.config.tensor_file_map.get(key)
+            if not filename: continue
+
+            stfile = STFile.open(filename, fast = self.model.config.fasttensors, keymap = self.model.config.arch.keymap)
+            # tensor = stfile.get_tensor(key, device = self.device()).half()
+            tensor = stfile.get_tensor(key, device = "cpu", cached = True, out_dtype = torch.half)
+            tensor = tensor[f_beg:f_end, :]
+            if in_feat != out_feat and \
+                tensor.shape[1] == out_feat and \
+                tensor.shape[0] == in_feat:
+                tensor = tensor.T
+            tensor = tensor.contiguous().to(self.device())
+            return nn.Parameter(tensor)
+
+        return None
+
+
     def weight_footprint(self) -> int:
 
         if self.footprint == -1:
@@ -163,7 +190,8 @@ class ExLlamaV2Module:
             # Error
 
             if self.footprint == -1:
-                raise ValueError("Unknown tensor type: " + self.key)
+                # raise ValueError("Unknown tensor type: " + self.key)
+                return self.assumed_footprint
 
         return self.footprint
 
