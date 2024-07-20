@@ -104,8 +104,10 @@ class ExLlamaV2Config:
     final_logit_softcapping: float | None
     attn_logit_softcapping: float | None
     sliding_window: int
+    norm_head: int | None
 
     checkpoint_fused_mlp: bool
+    checkpoint_offset_qzeros: bool
 
 
     def __init__(self,
@@ -251,6 +253,10 @@ class ExLlamaV2Config:
         self.attn_logit_softcapping = read(read_config, float, "attn_logit_softcapping", None)
         self.final_logit_softcapping = read(read_config, float, "final_logit_softcapping", None)
 
+        # Normalize weights in head layer
+
+        self.norm_head = read(read_config, int, "norm_head", None)
+
         # Positional embeddings
 
         self.rotary_embedding_base = read(read_config, float, ["rope_theta", "attn_config->rope_theta"], 10000.0)
@@ -281,6 +287,11 @@ class ExLlamaV2Config:
                 self.alt_rope_method = "su"
             # if scaling_type == "yarn":
             #     self.scale_alpha_value = factor
+
+        # Checkpoint format (for GPTQ models)
+
+        checkpoint_format = read(read_config, str, ["quantization_config->checkpoint_format"], None)
+        self.checkpoint_offset_qzeros = (checkpoint_format == "gptq_v2")
 
         # Create map of model tensors
 
